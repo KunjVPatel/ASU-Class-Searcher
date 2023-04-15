@@ -8,8 +8,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait #type: ignore
 from selenium.webdriver.support import expected_conditions as EC
 
-classNum = 301 #Class Num
-subjectName = "DAT" #Class Subject
+classNum = 412 #Class Num
+subjectName = "CSE" #Class Subject
 termNum = 2237 #Fall 2023 term num
 
 options = Options()
@@ -36,44 +36,38 @@ def csvWriter(text):
             else:
                 writer.writerow(row)
 
-text = main(classNum, subjectName, termNum)
-# csvWriter(text)
-a = text.split('\n')
-print(a)
-finallist = []
-for i in range(0,len(a)):
-    if a[i] == (subjectName + " " + str(classNum)):
-        l = []
+def generate_availability_list(class_num, subject_name, term_num):
+    # Get the input text data and split it into lines
+    text = main(class_num, subject_name, term_num)
+    lines = text.split('\n')
+
+    # Find the lines containing the desired subject and class number
+    class_header = subject_name + " " + str(class_num)
+    class_lines = [line for line in lines if line.strip(' ') == class_header]
+
+    # Extract availability information from each class line
+    availability_list = []
+    for class_line in class_lines:
+        class_info = []
         try:
-            for j in range(0,11):
-                if (a[i+j].strip(' ') == 'ASU Online') or (a[i+j].strip(' ') == 'Internet - Hybrid'):
-                    l.append(a[i+j])
-                    l.append(a[i+j+1])
-                    l.append(a[i+j+2])
-                    l.append(a[i+j+3])
+            # Look for availability information in the next 11 lines
+            for i in range(11):
+                line = lines[lines.index(class_line) + i]
+                if line.strip(' ') == 'ASU Online' or line.strip(' ') == 'Internet - Hybrid':
+                    # If availability info is found, add it to the class info list
+                    class_info.extend([line, lines[lines.index(line) + 1], lines[lines.index(line) + 2], lines[lines.index(line) + 3]])
                     break
                 else:
-                    l.append(a[i+j])
+                    class_info.append(line)
         except:
             continue
-        finallist.append(l)
-    else:
-        continue
-print(finallist)
+        # If availability info was found, add it to the availability list
+        if class_info:
+            availability = class_info[-1]
+            availability_list.append([class_info[0], class_info[2], "Available" if int(availability.split()[0]) > 0 else "Not Available", availability])
 
-AvailabilityList = []
-for i in finallist:
-    l1 = []
-    Availability = (i[-1])
-    s = Availability.split(" ")
-    l1.append(i[0])
-    l1.append(i[2])
-    if(int(s[0]) > 0):
-        ans = "Available"
-    else:
-        ans = "Not Available"
-    l1.append(ans)
-    l1.append(i[-1])
-    AvailabilityList.append(l1)
-for i in AvailabilityList:
-    print(i)
+    # Print the availability list
+    for availability_info in availability_list:
+        print(availability_info)
+
+generate_availability_list(classNum, subjectName, termNum)
