@@ -1,1 +1,2 @@
 # ASU-Class-Searcher
+This code here scrapes the asu class searching website for realtime updates of the class availability. This is so that I can be lazy and not have to check if the classes are available manually and instead have this scraper do it for me.
