@@ -6,8 +6,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait #type: ignore
 from selenium.webdriver.support import expected_conditions as EC
 
-classNum = 301 #Class Num
-subjectName = "DAT" #Class Subject
+classNum = 240 #Class Num
+subjectName = "CSE" #Class Subject
 termNum = 2237 #Fall 2023 term num
 classNumber = 88817
 
@@ -66,6 +66,7 @@ def csvWriter(text):
     columns = ['Class', 'Class Number', 'Availability','Seats']
     availability_list = [] #Create a list to store availability data
     for data in class_data: #Iterate through each extracted class and check if seats are available
+        print(data)
         class_info = [[]] # Initialize an empty nested list
         availability = (data[-1])
         s = availability.split(" ")
@@ -82,10 +83,18 @@ def csvWriter(text):
         for class_info in availability_list:
             df = pd.DataFrame([class_info], columns=columns)
             df.to_csv(f, header=f.tell()==0, index=False)
-    
 
+    columns_1 = ['col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8', 'col9', 'col10', 'col11']
+    with open('AllOutput.csv', 'w') as f:
+        f.write(','.join(columns) + '\n')
+        
+        for data in class_data:
+            df = pd.DataFrame([data], columns=columns_1[:len(data)])
+            for col in columns[len(data):]:
+                df[col] = ''
+            
+            df.to_csv(f, header=False, index=False)
 
-# text = getClassesFromPage(classNum, subjectName, termNum)
-text = classNumberSearcher(classNumber ,termNum)
+text = getClassesFromPage(classNum, subjectName, termNum)
+# text = classNumberSearcher(classNumber ,termNum)
 csvWriter(text)
-
