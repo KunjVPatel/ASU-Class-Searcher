@@ -1,23 +1,29 @@
+# Importing Discord
 import discord
 from discord.ext import commands, tasks
 
+# Importing Items needed to handle Data Base, Time and Getting Data from API
 import pandas as pd
 import json
 import requests
 import random
 import re
 
+# Importing Items for Webscraping
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# Getting the Token from a local file
 from token_disc import TOKEN
 
+# Wrapping getway and setting the bot
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# The Scraping function for course_id
 def getID(course_id, term):
     # The Link we are trying to Scrape.
     link_subject_based = f"https://catalog.apps.asu.edu/catalog/classes/classlist?campusOrOnlineSelection=A&honors=F&keywords={course_id}&promod=F&searchType=all&term={term}"
@@ -69,11 +75,12 @@ def getID(course_id, term):
         print("Pattern not found in the given string.")
         return False, ""
 
+# Setting up init of bot
 @bot.event
 async def on_ready():
     print(f'We have logged in as {bot.user}')
 
-
+# Now creating the class num, class sub checker
 @tasks.loop(minutes=random.randint(6, 15))
 async def check_class_availability(class_num, class_subject, class_term, channel_id):
     headers = {'Authorization': 'Bearer null'}
@@ -142,6 +149,16 @@ async def check_course_availability(course_id, term, channel_id, ctx):
 
 
 @bot.command()
+async def helpBot(ctx):
+    embed = discord.Embed(title="Bot Commands", color=0x00ff00)
+    embed.add_field(name="!checkCourse", value="Check the availability of a single class based on Class ID.\nUse Case is checkCourse [courseID for Ex. 12345] [Term for Ex. 2241]", inline=False)
+    embed.add_field(name="!checkClass", value="Check the availability of a list of classes that are available based on name.\nUse Case is checkClass [ClassNum for Ex. 205] [ClassSubject for Ex. CSE] [Term for Ex. 2241]", inline=False)
+    embed.add_field(name="!stopChecking", value="Stop checking availability for courses or classes", inline=False)
+
+    await ctx.send(embed=embed)
+
+
+@bot.command()
 async def checkCourse(ctx, course_id, term):
     channel_id = ctx.channel.id
     print(channel_id)
@@ -158,7 +175,7 @@ async def checkClass(ctx, class_num, class_subject, class_term):
 
 
 @bot.command()
-async def stop_checking(ctx, task_type):
+async def stopChecking(ctx, task_type):
     if task_type.lower() == 'course':
         check_course_availability.stop()
         await ctx.send('Course availability checking has stopped.')
