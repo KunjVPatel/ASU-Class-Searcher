@@ -171,6 +171,8 @@ async def check_course_availability(course_id, term, channel_id, ctx):
         user = ctx.author
         await channel.send(f"{user.mention}, the course is available! Register now.\n{text}")
         check_course_availability.stop()
+    
+    await asyncio.sleep(60 * random.randint(6, 15))
 
 
 @bot.command()
