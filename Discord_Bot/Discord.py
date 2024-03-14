@@ -2,6 +2,8 @@
 import discord
 from discord.ext import commands, tasks
 
+import asyncio
+
 # Importing Items needed to handle Data Base, Time and Getting Data from API
 import pandas as pd
 import json
@@ -22,6 +24,23 @@ from token_disc import TOKEN
 # Wrapping getway and setting the bot
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
+
+user_requests = {}
+
+def add_user_request(user_id, request):
+    if user_id in user_requests:
+        if len(user_requests[user_id]) >= 10:
+            return False
+        user_requests[user_id].append(request)
+    else:
+        user_requests[user_id] = [request]
+    return True
+
+def remove_user_request(user_id, index):
+    if user_id in user_requests and 0 <= index < len(user_requests[user_id]):
+        del user_requests[user_id][index]
+        return True
+    return False
 
 # The Scraping function for course_id
 def getID(course_id, term):
@@ -95,8 +114,14 @@ async def check_class_availability(class_num, class_subject, class_term, channel
                                 "subject": class_subject,
                                 "term": class_term
                             })
-    data = json.loads(response.text)
+    try:
+        data = json.loads(response.text)
+    except json.JSONDecodeError as e:
+        # Return the error message
+        return f"Error decoding JSON: {e}"
 
+    await asyncio.sleep(0.1)
+    
     # Extract and format data
     formatted_data = []
     class_name = f"{class_subject} {class_num}"
@@ -111,7 +136,6 @@ async def check_class_availability(class_num, class_subject, class_term, channel
             'Occupancy': f"{class_info.get('ENRLTOT', '')} of {class_info.get('ENRLCAP', '')}"
         }
         formatted_data.append(row)
-
     # Convert to Pandas DataFrame
     df = pd.DataFrame(formatted_data)
 
@@ -135,6 +159,7 @@ async def check_class_availability(class_num, class_subject, class_term, channel
         # Print the table of available classes
         table_message = f"```{available_classes.to_string(index=False)}```"
         await channel.send(f"There are available classes:\n{table_message}")
+        check_class_availability.stop()
 
 
 @tasks.loop(minutes=random.randint(6, 15))
@@ -160,18 +185,46 @@ async def helpBot(ctx):
 
 @bot.command()
 async def checkCourse(ctx, course_id, term):
-    channel_id = ctx.channel.id
+    channel_id = ctx.channel.id 
     print(channel_id)
-    check_course_availability.start(course_id, term, channel_id, ctx)
-    await ctx.send(f'Course availability checking has started for Course ID: {course_id}, Term: {term}.')
 
+    # Check if the user can add a new request
+    if not add_user_request(ctx.author.id, f'checkCourse {course_id} {term}'):
+        await ctx.send("You've reached the limit of 10 requests. Cannot add more.")
+        return
+
+    # Start the course availability checking task
+    await ctx.send(f'Course availability checking has started for Course ID: {course_id}, Term: {term}.')
+    await asyncio.gather(
+        check_course_availability(course_id, term, channel_id, ctx),
+        check_class_availability(course_id, term, channel_id, ctx)
+    )
 
 @bot.command()
 async def checkClass(ctx, class_num, class_subject, class_term):
-    channel_id = ctx.channel.id
-    # Call your check_class_availability function for class
-    check_class_availability.start(class_num, class_subject, class_term, channel_id)
-    await ctx.send(f'Class availability checking has started for Class ID: {class_num}, Term: {class_term}.')
+    if add_user_request(ctx.author.id, f'checkClass {class_num} {class_subject} {class_term}'):
+        await ctx.send(f'Class availability checking has started for Class ID: {class_num}, Term: {class_term}.')
+        await asyncio.gather(
+            check_class_availability(class_num, class_subject, class_term, ctx.channel.id)
+        )
+    else:
+        await ctx.send("You've reached the limit of 10 requests. Cannot add more.")
+
+@bot.command()
+async def myRequests(ctx):
+    user_id = ctx.author.id
+    if user_id in user_requests and user_requests[user_id]:
+        await ctx.send(f'Your requests:\n{", ".join(user_requests[user_id])}')
+    else:
+        await ctx.send('You have no pending requests.')
+
+@bot.command()
+async def removeRequest(ctx, index: int):
+    user_id = ctx.author.id
+    if remove_user_request(user_id, index):
+        await ctx.send(f'Request at index {index} removed.')
+    else:
+        await ctx.send('Invalid index or no requests found.')
 
 
 @bot.command()
